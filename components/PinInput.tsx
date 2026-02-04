@@ -1,21 +1,57 @@
 import React from "react";
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
 
 export default function PinInput() {
-
   function generatePin() {
-    return Math.floor(Math.random() * 900) + 100;
-  }
+  return String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+}
 
+  
   const PIN_LEN = 3;
   const [guess, setGuess] = useState<number[]>([]);
   const [pin, setPin] = useState(() => generatePin());
+  const [round, setRound] =useState<number>(1);
+  
+  const guessStr = guess.join("");
+  const isComplete = guess.length === PIN_LEN;
+  const isCorrect = isComplete && guessStr === pin;
+
+  function helpPin() {
+    if (!isComplete) return "";
+    if (isCorrect) return "Correct! Next round";
+    if (guessStr > pin) return "Too high!";
+    return "Too low!";
+  }
+
+  useEffect(() => {
+    if (isCorrect) {
+      setRound((r) => r + 1);
+  
+      const timeout = setTimeout(() => {
+        setGuess([]);
+        setPin(generatePin());
+      }, 800);
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [isCorrect]);
+  
+  
+
+  console.log(pin);
+
   
 
   return (
     <div className="grid grid-cols-2 place-items-center h-125 w-250 bg-gray-600 rounded-4xl ">
       <div className="flex gap-4">
+        <div>
+          <h2>Round {round}</h2>
+        </div>
+        <div>
+          <p>{helpPin()}</p>
+        </div>
+
         {Array.from({ length: PIN_LEN }).map((_, i) => (
           <p
             key={i}
