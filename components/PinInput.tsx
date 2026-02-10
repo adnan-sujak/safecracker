@@ -26,17 +26,6 @@ export default function PinInput() {
 
   }
 
-  function winOrLose() {
-    let win = 0
-
-    if (isCorrect) {
-      win += 10
-    }
-
-    win += 1
-
-
-  }
 
   type ShopItemId = "vest" | "reveal" | "life"
 
@@ -53,12 +42,16 @@ export default function PinInput() {
   const [pin, setPin] = useState(() => generatePin());
   const [round, setRound] = useState<number>(1);
   const [money, setMoney] = useState<number>(0);
+  const [hasWon, setHasWon] = useState(false);
+  const [hasExploded, setHasExploded] = useState(false);
 
   const guessStr = guess.join("");
   const isComplete = guess.length === PIN_LEN;
   const isCorrect = isComplete && guessStr === pin;
 
   function helpPin() {
+    if (hasWon) return "You won!";
+    if (hasExploded) return "Safe exploded!";
     if (!isComplete) return "";
     if (isCorrect) return "Correct! Next round";
     if (guessStr > pin) return "Too high!";
@@ -67,11 +60,20 @@ export default function PinInput() {
 
   useEffect(() => {
     if (isCorrect) {
-      setRound((r) => {
-        setMoney((m) => m + 1000 + Math.round(100 * r * Math.random()));
-        winOrLose()
+      // Calculate win chance: 10% base + 1% per round, max 50%
+      // Capture current round value to avoid dependency issues
+      setRound((currentRound) => {
+        const winChance = Math.min(10 + (currentRound - 1), 50);
+        console.log(`Round ${currentRound}: Win chance = ${winChance}%`);
+        const randomRoll = Math.random() * 100;
 
-        return r + 1;
+        if (randomRoll < winChance) {
+          setHasWon(true);
+          return currentRound; // Don't increment if won
+        }
+
+        setMoney((m) => m + 1000 + Math.round(100 * currentRound * Math.random()));
+        return currentRound + 1;
       });
 
       const timeout = setTimeout(() => {
@@ -83,7 +85,34 @@ export default function PinInput() {
     }
   }, [isCorrect]);
 
+  useEffect(() => {
+    // Handle incorrect complete guesses
+    if (isComplete && !isCorrect) {
+      // Calculate explosion chance: 1% base + 1% per round, max 25%
+      // Use functional update to get current round without dependency
+      setRound((currentRound) => {
+        const explosionChance = Math.min(1 + (currentRound - 1), 25);
+        console.log(`Round ${currentRound}: Explosion chance = ${explosionChance}%`);
+        const randomRoll = Math.random() * 100;
+
+        if (randomRoll < explosionChance) {
+          setHasExploded(true);
+        }
+
+        return currentRound; // Don't change round on incorrect guess
+      });
+
+      // Reset guess after showing feedback
+      const timeout = setTimeout(() => {
+        setGuess([]);
+      }, 1500);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isComplete, isCorrect]);
+
   console.log(pin);
+
 
   const items = [
     { id: "vest" as const, name: "Bulletproof Vest", price: 1000 },
